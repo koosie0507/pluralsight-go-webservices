@@ -7,16 +7,25 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/koosie0507/pluralsight-go-webservices/server/middleware"
 )
 
 const productsBasePath = "products"
 
+//SetupRoutes is a utility function for setting up the products API
 func SetupRoutes(apiBasePath string) {
 	productListHandler := http.HandlerFunc(productsHandler)
 	productItemHandler := http.HandlerFunc(productHandler)
 
-	http.Handle(fmt.Sprintf("%s/%s", apiBasePath, productsBasePath), productListHandler)
-	http.Handle(fmt.Sprintf("%s/%s/", apiBasePath, productsBasePath), productItemHandler)
+	http.Handle(
+		fmt.Sprintf("%s/%s", apiBasePath, productsBasePath),
+		middleware.JSON(middleware.CORS(productListHandler)),
+	)
+	http.Handle(
+		fmt.Sprintf("%s/%s/", apiBasePath, productsBasePath),
+		middleware.JSON(middleware.CORS(productItemHandler)),
+	)
 }
 
 func productHandler(w http.ResponseWriter, r *http.Request) {
