@@ -20,11 +20,11 @@ func SetupRoutes(apiBasePath string) {
 
 	http.Handle(
 		fmt.Sprintf("%s/%s", apiBasePath, productsBasePath),
-		middleware.JSON(middleware.CORS(productListHandler)),
+		middleware.Log(middleware.JSON(middleware.CORS(productListHandler))),
 	)
 	http.Handle(
 		fmt.Sprintf("%s/%s/", apiBasePath, productsBasePath),
-		middleware.JSON(middleware.CORS(productItemHandler)),
+		middleware.Log(middleware.JSON(middleware.CORS(productItemHandler))),
 	)
 }
 
