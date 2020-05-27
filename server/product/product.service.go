@@ -46,7 +46,6 @@ func productHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
 		w.Write(productJSON)
 	case http.MethodPut:
 		var updatedProduct Product
@@ -85,7 +84,6 @@ func productsHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
 		w.Write(productsJSON)
 	case http.MethodPost:
 		var product Product
