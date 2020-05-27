@@ -67,6 +67,10 @@ func productHandler(w http.ResponseWriter, r *http.Request) {
 		putProduct(updatedProduct)
 		w.WriteHeader(http.StatusAccepted)
 		return
+	case http.MethodDelete:
+		removeProduct(productID)
+	case http.MethodOptions:
+		return
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -103,5 +107,9 @@ func productsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte(strconv.Itoa(newID)))
+	case http.MethodOptions:
+		return
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
