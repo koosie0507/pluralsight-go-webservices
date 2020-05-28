@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/koosie0507/pluralsight-go-webservices/server/middleware"
+	"golang.org/x/net/websocket"
 )
 
 const productsBasePath = "products"
@@ -26,6 +27,7 @@ func SetupRoutes(apiBasePath string) {
 		fmt.Sprintf("%s/%s/", apiBasePath, productsBasePath),
 		middleware.Log(middleware.JSON(middleware.CORS(productItemHandler))),
 	)
+	http.Handle("/websocket", websocket.Handler(productSocket))
 }
 
 func productHandler(w http.ResponseWriter, r *http.Request) {
