@@ -9,8 +9,10 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${fileDirname}",
-            "env": {},
+            "program": "${workspaceFolder}/server",
+            "env": {
+              "MYSQL_URI": "user:pass@tcp(127.0.0.1)/inventorydb"
+            },
             "args": []
         }
     ]

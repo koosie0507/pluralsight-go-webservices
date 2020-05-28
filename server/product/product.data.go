@@ -1,95 +1,108 @@
 package product
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"sync"
+
+	"github.com/koosie0507/pluralsight-go-webservices/server/database"
 )
 
-var productMap = struct {
-	sync.RWMutex
-	m map[int]Product
-}{m: make(map[int]Product)}
-
-func init() {
-	fmt.Println("loading products ...")
-	products, err := loadProductMap()
+func getProduct(id int) (*Product, error) {
+	row := database.DbConnection.QueryRow(`
+SELECT productId, manufacturer, sku, upc, pricePerUnit, quantityOnHand, productName
+FROM products
+WHERE productId = ?`, id)
+	if row == nil {
+		return nil, fmt.Errorf("failed to fetch product [%d] from the db", id)
+	}
+	var product Product
+	err := row.Scan(
+		&product.ProductID,
+		&product.Manufacturer,
+		&product.SKU,
+		&product.UPC,
+		&product.PricePerUnit,
+		&product.QuantityOnHand,
+		&product.ProductName)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	productMap.m = products
-	fmt.Printf("%d products loaded ...\n", len(productMap.m))
+	return &product, nil
 }
 
-func loadProductMap() (map[int]Product, error) {
-	fileName := "products.json"
-	file, err := ioutil.ReadFile(fileName)
+func removeProduct(id int) (int64, error) {
+	result, err := database.DbConnection.Exec("DELETE FROM products WHERE productID=?", id)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read from '%s': %s", fileName, err)
+		return 0, err
 	}
-	productList := make([]Product, 0)
-	err = json.Unmarshal([]byte(file), &productList)
+	count, err := result.RowsAffected()
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse JSON from file '%s': %s", fileName, err)
+		return 0, err
 	}
-	m := make(map[int]Product)
-	for _, product := range productList {
-		m[product.ProductID] = product
-	}
-	return m, nil
+	return count, nil
 }
 
-func getProduct(id int) *Product {
-	productMap.RLock()
-	defer productMap.RUnlock()
-	if product, ok := productMap.m[id]; ok {
-		return &product
+func getProductList() ([]Product, error) {
+	results, err := database.DbConnection.Query(`
+SELECT productId, manufacturer, sku, upc, pricePerUnit, quantityOnHand, productName
+FROM products`)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	defer results.Close()
+	products := make([]Product, 0)
+	for results.Next() {
+		var product Product
+		results.Scan(
+			&product.ProductID,
+			&product.Manufacturer,
+			&product.SKU,
+			&product.UPC,
+			&product.PricePerUnit,
+			&product.QuantityOnHand,
+			&product.ProductName)
+		products = append(products, product)
+	}
+	return products, nil
 }
 
-func removeProduct(id int) {
-	productMap.Lock()
-	defer productMap.Unlock()
-	delete(productMap.m, id)
+func updateProduct(product Product) (int64, error) {
+	result, err := database.DbConnection.Exec(`
+UPDATE products
+SET manufacturer=?, sku=?, upc=?, pricePerUnit=?, quantityOnHand=?, productName=?
+WHERE productID=?`,
+		product.Manufacturer,
+		product.SKU,
+		product.UPC,
+		product.PricePerUnit,
+		product.QuantityOnHand,
+		product.ProductName,
+		product.ProductID)
+	if err != nil {
+		return 0, err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
-func getProductList() []Product {
-	productMap.RLock()
-	products := make([]Product, 0, len(productMap.m))
-	for _, value := range productMap.m {
-		products = append(products, value)
+func insertProduct(product Product) (int64, error) {
+	result, err := database.DbConnection.Exec(`
+INSERT INTO products (manufacturer, sku, upc, pricePerUnit, quantityOnHand, productName)
+VALUES (?, ?, ?, ?, ?, ?)`,
+		product.Manufacturer,
+		product.SKU,
+		product.UPC,
+		product.PricePerUnit,
+		product.QuantityOnHand,
+		product.ProductName)
+	if err != nil {
+		return 0, err
 	}
-	productMap.RUnlock()
-	return products
-}
-
-func getNextProductID() int {
-	maxID := 0
-	for _, product := range productMap.m {
-		if maxID < product.ProductID {
-			maxID = product.ProductID
-		}
+	insertID, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
 	}
-	return maxID + 1
-}
-
-func putProduct(product Product) (int, error) {
-	newID := -1
-	if product.ProductID > 0 {
-		oldProduct := getProduct(product.ProductID)
-		if oldProduct == nil {
-			return 0, fmt.Errorf("product id '%d' doesn't exist", product.ProductID)
-		}
-		newID = product.ProductID
-	} else {
-		newID = getNextProductID()
-		product.ProductID = newID
-	}
-	productMap.Lock()
-	productMap.m[newID] = product
-	productMap.Unlock()
-	return newID, nil
+	return insertID, nil
 }
