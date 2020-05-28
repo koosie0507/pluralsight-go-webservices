@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/koosie0507/pluralsight-go-webservices/server/middleware"
 	"github.com/koosie0507/pluralsight-go-webservices/server/upload"
@@ -18,9 +20,14 @@ const receiptsPath = "receipts"
 //SetupRoutes is a utility function for setting up the products API
 func SetupRoutes(apiBasePath string) {
 	receiptsHandler := http.HandlerFunc(handleReceipts)
+	downloadHandler := http.HandlerFunc(handleDownload)
 	http.Handle(
 		fmt.Sprintf("%s/%s", apiBasePath, receiptsPath),
-		middleware.Log(middleware.JSON(middleware.CORS(receiptsHandler))),
+		middleware.Log(middleware.CORS(receiptsHandler)),
+	)
+	http.Handle(
+		fmt.Sprintf("%s/%s/", apiBasePath, receiptsPath),
+		middleware.Log(middleware.CORS(downloadHandler)),
 	)
 }
 
@@ -64,4 +71,37 @@ func handleReceipts(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+}
+
+func handleDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodOptions {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	urlPathSegments := strings.Split(r.URL.Path, receiptsPath+"/")
+	tail := urlPathSegments[1:]
+	if len(tail) > 1 {
+		w.WriteHeader(http.StatusBadRequest)
+	}
+	fileName := tail[0]
+	file, err := os.Open(filepath.Join(upload.UploadsDir, fileName))
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	defer file.Close()
+	fileHeader := make([]byte, 512)
+	file.Read(fileHeader)
+	contentType := http.DetectContentType(fileHeader)
+	stats, err := file.Stat()
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	fileSize := strconv.FormatInt(stats.Size(), 10)
+	w.Header().Set("Content-Disposition", "attachement; filename="+fileName)
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", fileSize)
+	file.Seek(0, 0)
+	io.Copy(w, file)
 }
