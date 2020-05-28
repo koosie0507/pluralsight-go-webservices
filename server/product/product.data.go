@@ -1,13 +1,17 @@
 package product
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/koosie0507/pluralsight-go-webservices/server/database"
 )
 
 func getProduct(id int) (*Product, error) {
-	row := database.DbConnection.QueryRow(`
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	row := database.DbConnection.QueryRowContext(ctx, `
 SELECT productId, manufacturer, sku, upc, pricePerUnit, quantityOnHand, productName
 FROM products
 WHERE productId = ?`, id)
@@ -30,7 +34,9 @@ WHERE productId = ?`, id)
 }
 
 func removeProduct(id int) (int64, error) {
-	result, err := database.DbConnection.Exec("DELETE FROM products WHERE productID=?", id)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	result, err := database.DbConnection.ExecContext(ctx, "DELETE FROM products WHERE productID=?", id)
 	if err != nil {
 		return 0, err
 	}
@@ -42,7 +48,9 @@ func removeProduct(id int) (int64, error) {
 }
 
 func getProductList() ([]Product, error) {
-	results, err := database.DbConnection.Query(`
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	results, err := database.DbConnection.QueryContext(ctx, `
 SELECT productId, manufacturer, sku, upc, pricePerUnit, quantityOnHand, productName
 FROM products`)
 	if err != nil {
@@ -66,7 +74,9 @@ FROM products`)
 }
 
 func updateProduct(product Product) (int64, error) {
-	result, err := database.DbConnection.Exec(`
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	result, err := database.DbConnection.ExecContext(ctx, `
 UPDATE products
 SET manufacturer=?, sku=?, upc=?, pricePerUnit=?, quantityOnHand=?, productName=?
 WHERE productID=?`,
@@ -88,7 +98,9 @@ WHERE productID=?`,
 }
 
 func insertProduct(product Product) (int64, error) {
-	result, err := database.DbConnection.Exec(`
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	result, err := database.DbConnection.ExecContext(ctx, `
 INSERT INTO products (manufacturer, sku, upc, pricePerUnit, quantityOnHand, productName)
 VALUES (?, ?, ?, ?, ?, ?)`,
 		product.Manufacturer,
